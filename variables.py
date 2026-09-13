@@ -1,4 +1,4 @@
-from .membership import MembershipFunction as MF, LinguisticVariable as LV
+from membership import MembershipFunction as MF, LinguisticVariable as LV
 
 _INF = float('inf')
 

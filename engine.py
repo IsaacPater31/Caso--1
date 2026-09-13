@@ -1,7 +1,7 @@
 import numpy as np
 from dataclasses import dataclass
-from .membership import LinguisticVariable, MembershipFunction
-from .rules import FuzzyRule, Operator
+from membership import MembershipFunction
+from rules import FuzzyRule, Operator
 
 
 @dataclass
@@ -76,7 +76,7 @@ def run_inference(input_variables, output_variable, rules, crisp_inputs,
     activated = _evaluate_rules(rules, fuzzified, output_variable)
 
     u_min, u_max = output_variable.universe
-    n = int(round((u_max - u_min) / resolution)) + 1
+    n = round((u_max - u_min) / resolution) + 1
     y = np.linspace(u_min, u_max, n)
 
     implied_sets = []

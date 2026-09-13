@@ -70,26 +70,25 @@ def plot_full_report(inference_result, defuzz_values, input_variables, output_va
     method = inference_result.inference_method.capitalize()
     inputs_str = ', '.join(f'{k} = {v}' for k, v in inference_result.crisp_inputs.items())
 
-    fig = plt.figure(figsize=(14, 10))
+    fig = plt.figure(figsize=(14, 8))
     fig.suptitle(f'Sistema de Alerta por Inundación — {method}\n{inputs_str}',
                  fontsize=12, fontweight='bold')
 
-    gs = GridSpec(3, 2, figure=fig, hspace=0.45, wspace=0.3)
+    gs = GridSpec(2, 2, figure=fig, hspace=0.35, wspace=0.25)
 
-    # Row 0: input MFs
+    # Row 0: Input MFs (Funciones de membresia de entrada)
     for i, var in enumerate(input_variables):
         ax = fig.add_subplot(gs[0, i])
         fuzz = inference_result.fuzzified.get(var.name)
         crisp = inference_result.crisp_inputs.get(var.name)
         plot_variable(ax, var, crisp, fuzz)
 
-    # Row 1 left: implied sets — Row 1 right: output MFs (reference)
+    # Row 1 left: Implied sets (Reglas activadas)
     plot_implied_sets(fig.add_subplot(gs[1, 0]), inference_result)
-    plot_variable(fig.add_subplot(gs[1, 1]), output_variable)
 
-    # Row 2: aggregation + defuzzification (full width)
-    plot_aggregation(fig.add_subplot(gs[2, :]), inference_result, defuzz_values)
+    # Row 1 right: Aggregation + defuzzification (Agregacion y Centroide)
+    plot_aggregation(fig.add_subplot(gs[1, 1]), inference_result, defuzz_values)
 
-    fig.subplots_adjust(top=0.91)
+    fig.subplots_adjust(top=0.90, bottom=0.1)
     return fig
 
