@@ -14,7 +14,7 @@ NIVEL_RIO = LV('Nivel del Río', (0, 10), {
 PRECIPITACION = LV('Precipitación', (0, 200), {
     'Seco':     MF('Seco',     (-_INF, -_INF, 40, 80)),
     'Moderado': MF('Moderado', (60, 100, 100, 140)),
-    'Fuerte':   MF('Fuerte',   (110, 160, _INF, _INF)),
+    'Lluvia Fuerte': MF('Lluvia Fuerte', (110, 160, _INF, _INF)),
 })
 
 # ── Salida Y: Alerta de Emergencia [0, 100] % ─────────────────

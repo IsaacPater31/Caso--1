@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
+from matplotlib.widgets import RadioButtons
 
 
 def plot_variable(ax, variable, crisp_value=None, fuzzified=None):
@@ -28,16 +29,22 @@ def plot_variable(ax, variable, crisp_value=None, fuzzified=None):
 def plot_implied_sets(ax, inference_result):
     y = inference_result.y_universe
     for ar, mu in inference_result.implied_sets:
-        label = f"{ar.rule.id}: {ar.consequent_mf.name} (α={ar.firing_strength:.4f})"
+        label = f"{ar.rule.id}: {ar.consequent_mf.name} (α={ar.firing_strength:.3f})"
         ax.fill_between(y, 0, mu, alpha=0.2, label=label)
         ax.plot(y, mu, linewidth=1.2)
     method = inference_result.inference_method.capitalize()
-    ax.set_title(f'Conjuntos implicados — {method}', fontsize=10, fontweight='bold')
+    ax.set_title(f'Conjuntos Implicados — {method}', fontsize=10, fontweight='bold')
     ax.set_xlabel('Alerta de Emergencia (%)')
     ax.set_ylabel('μ')
     ax.set_ylim(-0.05, 1.1)
     ax.legend(fontsize=7, loc='upper right')
     ax.grid(True, alpha=0.3)
+
+
+_DEFUZZ_STYLES = {
+    'centroide':      ('red',   '--', 'Centroide'),
+    'centro_maximos': ('green', ':',  'Centro de Máximos'),
+}
 
 
 def plot_aggregation(ax, inference_result, defuzz_values=None):
@@ -46,14 +53,10 @@ def plot_aggregation(ax, inference_result, defuzz_values=None):
     ax.fill_between(y, 0, mu, alpha=0.3, color='steelblue', label='Agregación')
     ax.plot(y, mu, color='steelblue', linewidth=1.5)
 
-    styles = {
-        'centroide':       ('red',   '--', 'Centroide'),
-        'centro_maximos':  ('green', ':',  'Centro de Máximos'),
-    }
     if defuzz_values:
         for key, val in defuzz_values.items():
             if not np.isnan(val):
-                color, ls, label = styles.get(key, ('gray', '--', key))
+                color, ls, label = _DEFUZZ_STYLES.get(key, ('gray', '--', key))
                 ax.axvline(val, color=color, linestyle=ls, linewidth=2,
                            label=f'{label} = {val:.2f}%')
 
@@ -66,60 +69,110 @@ def plot_aggregation(ax, inference_result, defuzz_values=None):
     ax.grid(True, alpha=0.3)
 
 
-def plot_full_report(inference_result, defuzz_values, input_variables, output_variable):
-    method = inference_result.inference_method.capitalize()
-    
-    fig = plt.figure(figsize=(15, 8))
-    fig.suptitle(f'Dashboard de Inferencia Difusa — Método: {method}',
-                 fontsize=14, fontweight='bold')
-
-    gs = GridSpec(2, 3, figure=fig, width_ratios=[1, 1, 0.75], hspace=0.35, wspace=0.25)
-
-    # Fila 0: Funciones de membresia de entrada
-    for i, var in enumerate(input_variables):
-        ax = fig.add_subplot(gs[0, i])
-        fuzz = inference_result.fuzzified.get(var.name)
-        crisp = inference_result.crisp_inputs.get(var.name)
-        plot_variable(ax, var, crisp, fuzz)
-
-    # Fila 1: Reglas activadas y Desfusificacion
-    plot_implied_sets(fig.add_subplot(gs[1, 0]), inference_result)
-    plot_aggregation(fig.add_subplot(gs[1, 1]), inference_result, defuzz_values)
-
-    # Columna Derecha (Span vertical): Panel de Texto Analitico
-    ax_text = fig.add_subplot(gs[:, 2])
-    ax_text.axis('off')
-    
-    txt = "REPORTE ANALITICO\n"
-    txt += "="*30 + "\n\n"
-    
-    txt += "▶ ENTRADAS:\n"
-    for k, v in inference_result.crisp_inputs.items():
-        txt += f"  • {k}: {v}\n"
-    
-    txt += "\n▶ FUSIFICACION (Activas):\n"
-    for var_name, terms in inference_result.fuzzified.items():
-        active = {t: d for t, d in terms.items() if d > 0}
-        for t, d in active.items():
-            txt += f"  • {var_name} [{t}]: {d:.4f}\n"
-            
-    txt += "\n▶ REGLAS DISPARADAS:\n"
-    if not inference_result.activated_rules:
-        txt += "  (Ninguna regla)\n"
-    else:
-        for ar in inference_result.activated_rules:
-            txt += f"  • {ar.rule.id} -> {ar.consequent_mf.name} (α={ar.firing_strength:.3f})\n"
-            
-    txt += "\n▶ RESULTADO DESFUSIFICADO:\n"
+def _build_report_text(inference_result, defuzz_values):
     c = defuzz_values.get('centroide', float('nan'))
     m = defuzz_values.get('centro_maximos', float('nan'))
-    txt += f"  • Centroide:      {c:.2f} %\n"
-    txt += f"  • Centro Maximos: {m:.2f} %\n"
+    method = inference_result.inference_method.capitalize()
 
-    bbox_props = dict(boxstyle="square,pad=1.2", fc="#f8f9fa", ec="#dee2e6", lw=1.5)
-    ax_text.text(0.05, 0.95, txt, fontsize=10, family='monospace',
-                 verticalalignment='top', bbox=bbox_props, linespacing=1.6)
+    lines = [
+        f"MÉTODO: {method.upper()}",
+        "=" * 28,
+        "",
+        "▶ ENTRADAS:",
+    ]
+    for k, v in inference_result.crisp_inputs.items():
+        lines.append(f"  {k}: {v}")
 
-    fig.subplots_adjust(top=0.90, bottom=0.1, left=0.05, right=0.98)
+    lines += ["", "▶ FUSIFICACIÓN (Activas):"]
+    for var_name, terms in inference_result.fuzzified.items():
+        for t, d in terms.items():
+            if d > 0:
+                lines.append(f"  [{t}]: {d:.4f}")
+
+    lines += ["", "▶ REGLAS DISPARADAS:"]
+    if not inference_result.activated_rules:
+        lines.append("  (Ninguna regla)")
+    else:
+        for ar in inference_result.activated_rules:
+            lines.append(f"  {ar.rule.id} -> {ar.consequent_mf.name} (α={ar.firing_strength:.3f})")
+
+    lines += [
+        "",
+        "▶ DESFUSIFICACIÓN:",
+        f"  Centroide:      {c:.2f} %",
+        f"  Centro Máximos: {m:.2f} %",
+    ]
+    return "\n".join(lines)
+
+
+def build_dashboard(all_results, input_variables):
+    methods = list(all_results.keys())
+
+    fig = plt.figure(figsize=(16, 8))
+    fig.suptitle(
+        'Sistema de Alerta Temprana — Canal del Dique\n'
+        'Inferencia Difusa (Mamdani / Larsen)',
+        fontsize=13, fontweight='bold'
+    )
+
+    gs = GridSpec(2, 3, figure=fig,
+                  width_ratios=[1, 1, 0.75],
+                  hspace=0.38, wspace=0.28,
+                  left=0.05, right=0.98, top=0.88, bottom=0.08)
+
+    # Fila 0 — Funciones de membresía de entrada (estáticas)
+    first_result = all_results[methods[0]][0]
+    ax_x1 = fig.add_subplot(gs[0, 0])
+    ax_x2 = fig.add_subplot(gs[0, 1])
+    plot_variable(ax_x1, input_variables[0],
+                  crisp_value=first_result.crisp_inputs.get(input_variables[0].name),
+                  fuzzified=first_result.fuzzified.get(input_variables[0].name))
+    plot_variable(ax_x2, input_variables[1],
+                  crisp_value=first_result.crisp_inputs.get(input_variables[1].name),
+                  fuzzified=first_result.fuzzified.get(input_variables[1].name))
+
+    # Fila 1 — Conjuntos implicados y Agregación (dinámicos)
+    ax_impl = fig.add_subplot(gs[1, 0])
+    ax_agg  = fig.add_subplot(gs[1, 1])
+
+    # Columna 2 — Dividida limpiamente en 2 subcuadrantes sin solapamiento
+    gs_right = gs[:, 2].subgridspec(2, 1, height_ratios=[0.20, 0.80], hspace=0.18)
+    ax_radio = fig.add_subplot(gs_right[0])
+    ax_text = fig.add_subplot(gs_right[1])
+
+    ax_radio.set_facecolor('#f0f4f8')
+    radio = RadioButtons(ax_radio, labels=[m.capitalize() for m in methods],
+                         active=0, activecolor='steelblue')
+    ax_radio.set_title('Método de Inferencia', fontsize=9, fontweight='bold', pad=4)
+
+    ax_text.axis('off')
+    bbox_props = dict(boxstyle="square,pad=0.8", fc="#f8f9fa", ec="#dee2e6", lw=1.2)
+    txt_artist = ax_text.text(
+        0.02, 0.98,
+        _build_report_text(*all_results[methods[0]]),
+        fontsize=9, family='monospace',
+        verticalalignment='top',
+        bbox=bbox_props, linespacing=1.55,
+        transform=ax_text.transAxes,
+    )
+
+    def _redraw(method_label):
+        method_key = method_label.lower()
+        result, defuzz = all_results[method_key]
+        ax_impl.cla()
+        ax_agg.cla()
+        plot_implied_sets(ax_impl, result)
+        plot_aggregation(ax_agg, result, defuzz)
+        txt_artist.set_text(_build_report_text(result, defuzz))
+        fig.canvas.draw_idle()
+
+    radio.on_clicked(_redraw)
+
+    # CRÍTICO: Anclar la referencia del widget a la figura para evitar
+    # que el Garbage Collector de Python destruya los listeners de eventos
+    fig._radio = radio
+
+    # Render inicial
+    _redraw(methods[0].capitalize())
+
     return fig
-
