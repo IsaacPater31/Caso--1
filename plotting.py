@@ -68,27 +68,58 @@ def plot_aggregation(ax, inference_result, defuzz_values=None):
 
 def plot_full_report(inference_result, defuzz_values, input_variables, output_variable):
     method = inference_result.inference_method.capitalize()
-    inputs_str = ', '.join(f'{k} = {v}' for k, v in inference_result.crisp_inputs.items())
+    
+    fig = plt.figure(figsize=(15, 8))
+    fig.suptitle(f'Dashboard de Inferencia Difusa — Método: {method}',
+                 fontsize=14, fontweight='bold')
 
-    fig = plt.figure(figsize=(14, 8))
-    fig.suptitle(f'Sistema de Alerta por Inundación — {method}\n{inputs_str}',
-                 fontsize=12, fontweight='bold')
+    gs = GridSpec(2, 3, figure=fig, width_ratios=[1, 1, 0.75], hspace=0.35, wspace=0.25)
 
-    gs = GridSpec(2, 2, figure=fig, hspace=0.35, wspace=0.25)
-
-    # Row 0: Input MFs (Funciones de membresia de entrada)
+    # Fila 0: Funciones de membresia de entrada
     for i, var in enumerate(input_variables):
         ax = fig.add_subplot(gs[0, i])
         fuzz = inference_result.fuzzified.get(var.name)
         crisp = inference_result.crisp_inputs.get(var.name)
         plot_variable(ax, var, crisp, fuzz)
 
-    # Row 1 left: Implied sets (Reglas activadas)
+    # Fila 1: Reglas activadas y Desfusificacion
     plot_implied_sets(fig.add_subplot(gs[1, 0]), inference_result)
-
-    # Row 1 right: Aggregation + defuzzification (Agregacion y Centroide)
     plot_aggregation(fig.add_subplot(gs[1, 1]), inference_result, defuzz_values)
 
-    fig.subplots_adjust(top=0.90, bottom=0.1)
+    # Columna Derecha (Span vertical): Panel de Texto Analitico
+    ax_text = fig.add_subplot(gs[:, 2])
+    ax_text.axis('off')
+    
+    txt = "REPORTE ANALITICO\n"
+    txt += "="*30 + "\n\n"
+    
+    txt += "▶ ENTRADAS:\n"
+    for k, v in inference_result.crisp_inputs.items():
+        txt += f"  • {k}: {v}\n"
+    
+    txt += "\n▶ FUSIFICACION (Activas):\n"
+    for var_name, terms in inference_result.fuzzified.items():
+        active = {t: d for t, d in terms.items() if d > 0}
+        for t, d in active.items():
+            txt += f"  • {var_name} [{t}]: {d:.4f}\n"
+            
+    txt += "\n▶ REGLAS DISPARADAS:\n"
+    if not inference_result.activated_rules:
+        txt += "  (Ninguna regla)\n"
+    else:
+        for ar in inference_result.activated_rules:
+            txt += f"  • {ar.rule.id} -> {ar.consequent_mf.name} (α={ar.firing_strength:.3f})\n"
+            
+    txt += "\n▶ RESULTADO DESFUSIFICADO:\n"
+    c = defuzz_values.get('centroide', float('nan'))
+    m = defuzz_values.get('centro_maximos', float('nan'))
+    txt += f"  • Centroide:      {c:.2f} %\n"
+    txt += f"  • Centro Maximos: {m:.2f} %\n"
+
+    bbox_props = dict(boxstyle="square,pad=1.2", fc="#f8f9fa", ec="#dee2e6", lw=1.5)
+    ax_text.text(0.05, 0.95, txt, fontsize=10, family='monospace',
+                 verticalalignment='top', bbox=bbox_props, linespacing=1.6)
+
+    fig.subplots_adjust(top=0.90, bottom=0.1, left=0.05, right=0.98)
     return fig
 
