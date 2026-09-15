@@ -4,20 +4,15 @@ from variables import INPUT_VARIABLES, OUTPUT_VARIABLE
 from rules import RULES
 from engine import run_inference
 from defuzzification import centroid, center_of_maxima
-from presentation import _fix_stdout_encoding, get_inputs, print_header, print_method_results, print_summary_table
-from plotting import build_dashboard
+from presentation import build_dashboard, get_inputs
 
 
 def main():
-    _fix_stdout_encoding()
-
     x1, x2 = get_inputs()
     crisp_inputs = {
         INPUT_VARIABLES[0].name: x1,
         INPUT_VARIABLES[1].name: x2,
     }
-
-    print_header(x1, x2)
 
     all_results = {}
     for method in ('mamdani', 'larsen'):
@@ -26,9 +21,6 @@ def main():
         m = center_of_maxima(result.y_universe, result.mu_aggregated)
         defuzz = {'centroide': c, 'centro_maximos': m}
         all_results[method] = (result, defuzz)
-        print_method_results(method, result, c, m)
-
-    print_summary_table(all_results)
 
     fig = build_dashboard(all_results, INPUT_VARIABLES)
     plt.show()

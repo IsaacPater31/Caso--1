@@ -22,7 +22,7 @@ Le das el nivel del río (0 a 10 metros) y la lluvia acumulada en 24 horas (0 a 
    - **Centroide**: el promedio ponderado de toda la zona de riesgo combinada.
    - **Centro de máximos**: el punto medio de la franja de mayor alerta.
 
-5. **Muestra todo en pantalla y en gráficas**: qué tan activado quedó cada término, qué reglas se dispararon y con qué fuerza, cómo se ve la zona de alerta combinada, y dónde cae el valor final. Puedes alternar entre Mamdani y Larsen con un botón sin volver a correr el programa.
+5. **Muestra todo dentro de la presentación gráfica**: qué tan activado quedó cada término, qué reglas se dispararon y con qué fuerza, cómo se ve la zona de alerta combinada, y dónde cae el valor final. Puedes alternar entre Mamdani y Larsen con un botón sin volver a correr el programa.
 
 
 El programa no está atado a los valores del taller (7.3 m y 115 mm) — acepta cualquier lectura dentro del rango del río (0-10 m) y de la lluvia (0-200 mm).
